@@ -34,7 +34,7 @@ defaults:
 original_work_dir: ${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: ${original_work_dir}/data/
+data_dir: ../slue-toolkit/data/slue-voxpopuli/
 
 # pretty print config at the start of the run using Rich library
 print_config: True
