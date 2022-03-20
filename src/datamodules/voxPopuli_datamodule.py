@@ -20,10 +20,6 @@ class VoxPopuliDataModule(LightningDataModule):
 
         self.save_hyperparameters(logger=False)
 
-        self.data_train: Optional[Dataset] = None
-        self.data_val: Optional[Dataset] = None
-        self.data_test: Optional[Dataset] = None
-
     def train_dataloader(self):
         return build_voxpopuli_dataloader(
             batch_size=self.hparams.batch_size,
