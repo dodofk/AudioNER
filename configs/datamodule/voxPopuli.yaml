@@ -1,0 +1,9 @@
+_target_: src.datamodules.mnist_datamodule.MNISTDataModule
+
+data_dir: ${data_dir} # data_dir is specified in config.yaml
+batch_size: 16
+num_workers: 0
+pin_memory: False
+manifest_dir: ../slue-toolkit/manifest/slue-voxpopuli/nlp_ner
+model_type: deberta-base
+label_type: raw
