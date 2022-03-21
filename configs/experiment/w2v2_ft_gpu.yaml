@@ -26,14 +26,14 @@ trainer:
   deterministic: false
   gpus: 1
   precision: 16
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 8
 
 model:
   lr: 0.00001
 
 
 datamodule:
-  batch_size: 3
+  batch_size: 2
 
 logger:
   wandb:
