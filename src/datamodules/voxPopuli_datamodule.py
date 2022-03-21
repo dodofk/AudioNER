@@ -1,8 +1,5 @@
-from typing import Optional
-
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import Dataset
-from components.voxPopuli_dataset import build_voxpopuli_dataloader
+from src.datamodules.components.voxPopuli_dataset import build_voxpopuli_dataloader
 
 
 class VoxPopuliDataModule(LightningDataModule):
