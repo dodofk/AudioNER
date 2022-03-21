@@ -2,30 +2,16 @@ from typing import Any, List
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import MaxMetric
-from torchmetrics.classification.accuracy import Accuracy
+from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from src.models.components.simple_dense_net import SimpleDenseNet
+from transformers import HubertForCTC, Wav2Vec2Processor
 
 
-class MNISTLitModule(LightningModule):
-    """
-    Example of LightningModule for MNIST classification.
-
-    A LightningModule organizes your PyTorch code into 5 sections:
-        - Computations (init).
-        - Train loop (training_step)
-        - Validation loop (validation_step)
-        - Test loop (test_step)
-        - Optimizers (configure_optimizers)
-
-    Read the docs:
-        https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html
-    """
-
+class HUBERTFTModule(LightningModule):
     def __init__(
         self,
-        net: torch.nn.Module,
+        pretrain_name: str = "facebook/hubert-larget-ls960-ft",
+        optimizer: str = "Adam",
         lr: float = 0.001,
         weight_decay: float = 0.0005,
     ):
@@ -35,10 +21,8 @@ class MNISTLitModule(LightningModule):
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.net = net
 
-        # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.model = 
 
         # use separate metric instance for train, val and test step
         # to ensure a proper reduction over the epoch
