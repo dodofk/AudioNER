@@ -4,10 +4,10 @@ import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from transformers import HubertForCTC, Wav2Vec2Processor
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 
 
-class HUBERTFTModule(LightningModule):
+class Wav2Vec2FTModule(LightningModule):
     def __init__(
         self,
         pretrain_name: str = "facebook/hubert-larget-ls960-ft",
@@ -17,90 +17,104 @@ class HUBERTFTModule(LightningModule):
     ):
         super().__init__()
 
-        # this line allows to access init params with 'self.hparams' attribute
-        # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
+        self.model = Wav2Vec2ForCTC.from_pretrained(self.hparams.pretrain_name)
+        self.processor = Wav2Vec2Processor.from_pretrained(self.hparams.pretrain_name)
 
-        self.model = 
-
-        # use separate metric instance for train, val and test step
-        # to ensure a proper reduction over the epoch
-        self.train_acc = Accuracy()
-        self.val_acc = Accuracy()
-        self.test_acc = Accuracy()
+        self.train_cer = CharErrorRate()
+        self.train_wer = WordErrorRate()
+        self.val_cer = CharErrorRate()
+        self.val_wer = WordErrorRate()
+        # not yet used
+        # self.test_cer = CharErrorRate()
+        # self.test_wer = WordErrorRate()
 
         # for logging best so far validation accuracy
-        self.val_acc_best = MaxMetric()
+        self.val_cer_best = MinMetric()
+        self.val_wer_best = MinMetric()
 
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
+    def forward(self, inputs):
+        return self.model(**inputs)
 
     def step(self, batch: Any):
-        x, y = batch
-        logits = self.forward(x)
-        loss = self.criterion(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        return loss, preds, y
+        inputs = dict()
+        inputs["input_values"] = batch["waveform"]
+
+        with self.processor.as_target_processor():
+            inputs["labels"] = self.processor(
+                batch["normalized_text"],
+                return_tensors="pt",
+                padding=True,
+            ).input_ids
+
+        output = self.forward(inputs)
+
+        logits = output.logits
+        loss = output.loss
+
+        preds = torch.argmax(logits, dim=-1)
+        pred = self.processor.batch_decode(preds)
+
+        return loss, pred, [text.upper() for text in batch["normalized_text"]]
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.step(batch)
+        loss, pred, gt = self.step(batch)
 
-        # log train metrics
-        acc = self.train_acc(preds, targets)
+        cer = self.train_cer(pred, gt)
+        wer = self.train_wer(pred, gt)
+
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/acc", acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/cer", cer, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/wer", wer, on_step=False, on_epoch=True, prog_bar=True)
 
-        # we can return here dict with any tensors
-        # and then read it in some callback or in `training_epoch_end()`` below
-        # remember to always return loss from `training_step()` or else backpropagation will fail!
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return loss
 
     def training_epoch_end(self, outputs: List[Any]):
         # `outputs` is a list of dicts returned from `training_step()`
         pass
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.step(batch)
+        loss, pred, gt = self.step(batch)
 
         # log val metrics
-        acc = self.val_acc(preds, targets)
-        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("val/acc", acc, on_step=False, on_epoch=True, prog_bar=True)
+        cer = self.val_cer(pred, gt)
+        wer = self.val_wer(pred, gt)
 
-        return {"loss": loss, "preds": preds, "targets": targets}
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val/cer", cer, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/wer", wer, on_step=False, on_epoch=True, prog_bar=True)
+
+        return loss
 
     def validation_epoch_end(self, outputs: List[Any]):
-        acc = self.val_acc.compute()  # get val accuracy from current epoch
-        self.val_acc_best.update(acc)
-        self.log("val/acc_best", self.val_acc_best.compute(), on_epoch=True, prog_bar=True)
+        cer = self.val_cer.compute()
+        wer = self.val_wer.compute()
+        self.val_cer_best.update(cer)
+        self.val_wer_best.update(wer)
+        self.log(
+            "val/cer_best", self.val_cer_best.compute(), on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "val/wer_best", self.val_wer_best.compute(), on_epoch=True, prog_bar=True
+        )
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.step(batch)
-
-        # log test metrics
-        acc = self.test_acc(preds, targets)
-        self.log("test/loss", loss, on_step=False, on_epoch=True)
-        self.log("test/acc", acc, on_step=False, on_epoch=True)
-
-        return {"loss": loss, "preds": preds, "targets": targets}
+        raise NotImplementedError
 
     def test_epoch_end(self, outputs: List[Any]):
         pass
 
     def on_epoch_end(self):
         # reset metrics at the end of every epoch
-        self.train_acc.reset()
-        self.test_acc.reset()
-        self.val_acc.reset()
+        self.train_wer.reset()
+        self.train_cer.reset()
+        self.val_cer.reset()
+        self.val_wer.reset()
 
     def configure_optimizers(self):
-        """Choose what optimizers and learning-rate schedulers to use in your optimization.
-        Normally you'd need one. But in the case of GANs or similar you might have multiple.
-
-        See examples here:
-            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
-        """
-        return torch.optim.Adam(
-            params=self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay
+        return getattr(torch.optim, self.hparams.optimizer)(
+            params=self.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay,
         )
