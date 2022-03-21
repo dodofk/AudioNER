@@ -26,6 +26,7 @@ trainer:
   deterministic: false
   gpus: 1
   precision: 16
+  accumulate_grad_batches: 4
 
 model:
   lr: 0.00001
