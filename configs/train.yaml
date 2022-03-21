@@ -3,11 +3,11 @@
 # specify here default training configuration
 defaults:
   - _self_
-  - datamodule: mnist.yaml
-  - model: mnist.yaml
-  - callbacks: default.yaml
+  - datamodule: voxPopuli.yaml
+  - model: w2v2_ft.yaml
+  - callbacks: w2v2_ft.yaml
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
-  - trainer: default.yaml
+  - trainer: w2v2_ft.yaml
   - log_dir: default.yaml
 
   # experiment configs allow for version control of specific configurations
