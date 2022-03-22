@@ -7,7 +7,7 @@ defaults:
   - override /datamodule: voxPopuli.yaml
   - override /model: w2v2_ft.yaml
   - override /callbacks: w2v2_ft.yaml
-  - override /logger: null
+  - override /logger: tensorboard.yaml
   - override /trainer: w2v2_ft.yaml
 
 # all parameters below will be merged with parameters from default configurations set above
@@ -35,7 +35,7 @@ model:
 datamodule:
   batch_size: 2
 
-logger:
-  wandb:
-    project: "w2v2-ft"
-    tags: ["wav2vec2", "asr-ft", "${name}"]
+#logger:
+#  wandb:
+#    project: "w2v2-ft"
+#    tags: ["wav2vec2", "asr-ft", "${name}"]
