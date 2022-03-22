@@ -65,8 +65,8 @@ class Wav2Vec2FTModule(LightningModule):
         wer = self.train_wer(pred, gt)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=False)
-        self.log("train/cer", cer, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/wer", wer, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/cer", cer, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("train/wer", wer, on_step=True, on_epoch=True, prog_bar=True)
 
         return loss
 
