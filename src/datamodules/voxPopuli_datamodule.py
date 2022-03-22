@@ -42,7 +42,16 @@ class VoxPopuliDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        raise NotImplementedError
+        return build_voxpopuli_dataloader(
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            manifest_dir=self.hparams.manifest_dir,
+            data_dir=self.hparams.data_dir,
+            model_type=self.hparams.model_type,
+            label_type=self.hparams.label_type,
+            split="dev",
+        )
 
     def predict_dataloader(self):
         raise NotImplementedError
