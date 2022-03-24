@@ -1,5 +1,6 @@
 from typing import List, Dict
 import os
+import json
 
 import pandas as pd
 
@@ -13,11 +14,14 @@ import slue_toolkit.text_ner.ner_deberta_modules as ndm
 import hydra
 from hydra.utils import get_original_cwd
 
+from src.utils.text_preprocess import remove_special_characters, extract_all_chars
+
 
 class VoxPopuliDataset(Dataset):
     def __init__(
         self,
         manifest_dir: str = "../slue-toolkit/manifest/slue-voxpopuli/nlp_ner",
+        vocab_path: str = "./data/voxpopuli_vocab.json",
         split: str = "fine-tune",
         data_dir: str = "../slue-toolkit/data/slue-voxpopuli/",
         model_type: str = "deberta-base",
@@ -48,6 +52,22 @@ class VoxPopuliDataset(Dataset):
             sep="\t",
         )
 
+        self.df["normalized_text"] = self.df["normalized_text"].apply(lambda s: remove_special_characters(s))
+
+        if not os.path.exists(os.path.join(get_original_cwd(), vocab_path)):
+            self.vocab = extract_all_chars(
+                self.df["normalized_text"]
+            )
+            self.vocab.sort()
+            vocab_dict = {v: k for k, v in enumerate(self.vocab)}
+            vocab_dict["|"] = vocab_dict[" "]
+            del vocab_dict[" "]
+            vocab_dict["[UNK]"] = len(vocab_dict)
+            vocab_dict["[PAD]"] = len(vocab_dict)
+
+            with open(os.path.join(get_original_cwd(), vocab_path), "w") as vocab_file:
+                json.dump(vocab_dict, vocab_file)
+
     def __getitem__(self, index) -> Dict:
         waveform = self.load_audio(index)
         normalized_text = self.df.iloc[index]["normalized_text"]
@@ -59,7 +79,7 @@ class VoxPopuliDataset(Dataset):
 
         return {
             "waveform": waveform,
-            "normalized_text": normalized_text,
+            "text": normalized_text,
             "input_ids": input_ids,
             "token_type_ids": token_type_ids,
             "attention_mask": attention_mask,
@@ -87,17 +107,17 @@ class VoxPopuliDataset(Dataset):
 def voxpopuli_collate_fn(
     inputs: List,
 ) -> Dict:
+
     waveforms = [data["waveform"] for data in inputs]
-    normalized_text = [data["normalized_text"] for data in inputs]
+    normalized_text = [remove_special_characters(data["text"]) for data in inputs]
     input_ids = torch.stack([data["input_ids"] for data in inputs])
     token_type_ids = torch.stack([data["token_type_ids"] for data in inputs])
     attention_mask = torch.stack([data["attention_mask"] for data in inputs])
     labels = torch.stack([data["labels"] for data in inputs])
-
     padded_waveforms = rnn.pad_sequence(waveforms, batch_first=True)
     return {
         "waveform": padded_waveforms,
-        "normalized_text": normalized_text,
+        "text": normalized_text,
         "input_ids": input_ids,
         "token_type_ids": token_type_ids,
         "attention_mask": attention_mask,
@@ -110,6 +130,7 @@ def build_voxpopuli_dataloader(
     num_workers: int,
     pin_memory: bool,
     manifest_dir: str,
+    vocab_path: str,
     split: str,
     data_dir: str,
     model_type: str,
@@ -119,6 +140,7 @@ def build_voxpopuli_dataloader(
 
     vp_dataset = VoxPopuliDataset(
         manifest_dir=manifest_dir,
+        vocab_path=vocab_path,
         split=split,
         data_dir=data_dir,
         model_type=model_type,
@@ -143,6 +165,7 @@ def test_dataset(cfg) -> None:
         split="fine-tune",
     )
     print(dataset.__getitem__(1))
+    print(dataset.vocab)
 
 
 if __name__ == "__main__":
