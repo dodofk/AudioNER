@@ -36,6 +36,9 @@ original_work_dir: ${hydra:runtime.cwd}
 # path to folder with data
 data_dir: ../slue-toolkit/data/slue-voxpopuli/
 
+# path to vocab for tokenizer
+vocab_path: ./data/voxpopuli_vocab.json
+
 # pretty print config at the start of the run using Rich library
 print_config: True
 
