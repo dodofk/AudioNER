@@ -6,7 +6,7 @@ defaults:
   - datamodule: voxPopuli.yaml
   - model: w2v2_ft.yaml
   - callbacks: w2v2_ft.yaml
-  - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
+  - logger: wandb.yaml # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: w2v2_ft.yaml
   - log_dir: default.yaml
 
