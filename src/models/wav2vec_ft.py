@@ -24,12 +24,6 @@ class Wav2Vec2FTModule(LightningModule):
         # https://devblog.pytorchlightning.ai/fine-tuning-wav2vec-for-speech-recognition-with-lightning-flash-bf4b75cad99a
         self.save_hyperparameters(logger=False)
 
-        self.model = Wav2Vec2ForCTC.from_pretrained(
-            self.hparams.pretrain_name,
-            ctc_loss_reduction="mean",
-        )
-        self.model.config.ctc_zero_infinity = True
-        self.model.freeze_feature_extractor()
         tokenizer = Wav2Vec2CTCTokenizer(
             os.path.join(
                 get_original_cwd(),
@@ -50,6 +44,14 @@ class Wav2Vec2FTModule(LightningModule):
             feature_extractor=feature_extractor,
             tokenizer=tokenizer,
         )
+        self.model = Wav2Vec2ForCTC.from_pretrained(
+            self.hparams.pretrain_name,
+            ctc_loss_reduction="mean",
+            pad_token_id=self.processor.tokenizer.pad_token_id,
+        )
+        self.model.config.ctc_zero_infinity = True
+        self.model.freeze_feature_extractor()
+
         self.train_cer = CharErrorRate()
         self.train_wer = WordErrorRate()
         self.val_cer = CharErrorRate()
@@ -92,7 +94,7 @@ class Wav2Vec2FTModule(LightningModule):
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
 
-        # print(pred, gt)
+        print(pred, gt)
 
         cer = self.train_cer(pred, gt)
         wer = self.train_wer(pred, gt)
