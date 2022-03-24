@@ -1,27 +1,55 @@
 from typing import Any, List
 
+import os
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
+
+from hydra.utils import get_original_cwd
 
 
 class Wav2Vec2FTModule(LightningModule):
     def __init__(
         self,
         pretrain_name: str = "facebook/hubert-larget-ls960-ft",
+        vocab_path: str = "./data/voxpopuli_vocab.json",
         optimizer: str = "Adam",
         lr: float = 0.001,
         weight_decay: float = 0.0005,
     ):
         super().__init__()
-
+        # todo: may change to pytorch flash:
+        # https://devblog.pytorchlightning.ai/fine-tuning-wav2vec-for-speech-recognition-with-lightning-flash-bf4b75cad99a
         self.save_hyperparameters(logger=False)
 
-        self.model = Wav2Vec2ForCTC.from_pretrained(self.hparams.pretrain_name)
-        self.processor = Wav2Vec2Processor.from_pretrained(self.hparams.pretrain_name)
-
+        self.model = Wav2Vec2ForCTC.from_pretrained(
+            self.hparams.pretrain_name,
+            ctc_loss_reduction="mean",
+        )
+        self.model.config.ctc_zero_infinity = True
+        self.model.freeze_feature_extractor()
+        tokenizer = Wav2Vec2CTCTokenizer(
+            os.path.join(
+                get_original_cwd(),
+                self.hparams.vocab_path,
+            ),
+            unk_token="[UNK]",
+            pad_token="[PAD]",
+            word_delimiter_token="|"
+        )
+        feature_extractor = Wav2Vec2FeatureExtractor(
+            feature_size=1,
+            sampling_rate=16000,
+            padding_value=0.0,
+            do_normalize=True,
+            return_attention_mask=False,
+        )
+        self.processor = Wav2Vec2Processor(
+            feature_extractor=feature_extractor,
+            tokenizer=tokenizer,
+        )
         self.train_cer = CharErrorRate()
         self.train_wer = WordErrorRate()
         self.val_cer = CharErrorRate()
@@ -43,7 +71,7 @@ class Wav2Vec2FTModule(LightningModule):
 
         with self.processor.as_target_processor():
             inputs["labels"] = self.processor(
-                batch["normalized_text"],
+                batch["text"],
                 return_tensors="pt",
                 padding=True,
             ).input_ids
@@ -56,10 +84,15 @@ class Wav2Vec2FTModule(LightningModule):
         preds = torch.argmax(logits, dim=-1)
         pred = self.processor.batch_decode(preds)
 
-        return loss, pred, [text.upper() for text in batch["normalized_text"]]
+        # print("Debugging: \n Labels: ", inputs["labels"], "\nPreds: ", preds, "\nBatch text: ", batch["text"])
+        # gt = self.processor.batch_decode(inputs["labels"])
+
+        return loss, pred, [text.lower() for text in batch["text"]]
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
+
+        # print(pred, gt)
 
         cer = self.train_cer(pred, gt)
         wer = self.train_wer(pred, gt)
