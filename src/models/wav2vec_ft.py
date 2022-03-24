@@ -48,6 +48,7 @@ class Wav2Vec2FTModule(LightningModule):
             self.hparams.pretrain_name,
             ctc_loss_reduction="mean",
             pad_token_id=self.processor.tokenizer.pad_token_id,
+            vocab_size=self.processor.tokenizer.vocab_size,
         )
         self.model.config.ctc_zero_infinity = True
         self.model.freeze_feature_extractor()
