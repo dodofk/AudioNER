@@ -94,7 +94,7 @@ class Wav2Vec2FTModule(LightningModule):
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
 
-        print(pred, gt)
+        # print(pred, gt)
 
         cer = self.train_cer(pred, gt)
         wer = self.train_wer(pred, gt)
