@@ -11,6 +11,7 @@ class VoxPopuliDataModule(LightningDataModule):
         pin_memory: bool = False,
         model_type: str = "deberta-base",
         manifest_dir: str = "../slue-toolkit/manifest/slue-voxpopuli/nlp_ner",
+        vocab_path: str = "./data/voxpopuli_vocab.json",
         label_type: str = "raw",
     ):
         super().__init__()
@@ -23,6 +24,7 @@ class VoxPopuliDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             manifest_dir=self.hparams.manifest_dir,
+            vocab_path=self.hparams.vocab_path,
             data_dir=self.hparams.data_dir,
             model_type=self.hparams.model_type,
             label_type=self.hparams.label_type,
@@ -35,6 +37,7 @@ class VoxPopuliDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             manifest_dir=self.hparams.manifest_dir,
+            vocab_path=self.hparams.vocab_path,
             data_dir=self.hparams.data_dir,
             model_type=self.hparams.model_type,
             label_type=self.hparams.label_type,
@@ -47,6 +50,7 @@ class VoxPopuliDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             manifest_dir=self.hparams.manifest_dir,
+            vocab_path=self.hparams.vocab_path,
             data_dir=self.hparams.data_dir,
             model_type=self.hparams.model_type,
             label_type=self.hparams.label_type,
