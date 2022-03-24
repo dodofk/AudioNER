@@ -29,9 +29,10 @@ class Wav2Vec2FTModule(LightningModule):
                 get_original_cwd(),
                 self.hparams.vocab_path,
             ),
-            unk_token="[UNK]",
-            pad_token="[PAD]",
-            word_delimiter_token="|"
+            unk_token="<unk>",
+            pad_token="<pad>",
+            word_delimiter_token="|",
+            do_lower_case=True,
         )
         feature_extractor = Wav2Vec2FeatureExtractor(
             feature_size=1,
@@ -94,7 +95,7 @@ class Wav2Vec2FTModule(LightningModule):
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
 
-        # print(pred, gt)
+        print(pred, gt)
 
         cer = self.train_cer(pred, gt)
         wer = self.train_wer(pred, gt)
