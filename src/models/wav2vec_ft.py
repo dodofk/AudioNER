@@ -90,12 +90,12 @@ class Wav2Vec2FTModule(LightningModule):
         # print("Debugging: \n Labels: ", inputs["labels"], "\nPreds: ", preds, "\nPred: ", pred, "\nBatch text: ", batch["text"], "\nLoss: ", loss)
         # gt = self.processor.batch_decode(inputs["labels"])
 
-        return loss, pred, [text.upper() for text in batch["text"]]
+        return loss, pred, [text.lower() for text in batch["text"]]
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
 
-        # print(pred, gt)
+        print(pred, gt)
 
         cer = self.train_cer(pred, gt)
         wer = self.train_wer(pred, gt)
