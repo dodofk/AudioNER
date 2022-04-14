@@ -18,6 +18,7 @@ class W2V2DebertaModule(LightningModule):
     def __init__(
         self,
         audio_ckpt_path: str = "facebook/hubert-larget-ls960-ft",
+        vocab_path: str = "./data/e2e_voxpopuli_vocab.json",
         lm_pretrain_model: str = "microsoft/deberta-base",
         optimizer: str = "Adam",
         lr: float = 0.001,

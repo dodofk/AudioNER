@@ -55,7 +55,7 @@ class VoxPopuliDataset(Dataset):
             sep="\t",
         )
 
-        with open(os.path.join(get_original_cwd(), e2e_manifest_dir,f"{split}.combined.ltr")) as f:
+        with open(os.path.join(get_original_cwd(), e2e_manifest_dir, f"{split}.combined.ltr")) as f:
             e2e_ltr = f.read()
             self.e2e_ltr_list = e2e_ltr.split("\n")
 
