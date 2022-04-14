@@ -1,4 +1,4 @@
-_target_:
+_target_: src.models.w2v2_deberta.W2V2DebertaModule
 audio_ckpt_path: ./logs/experiments/runs/w2v2-asr-ft/2022-04-01_11-00-28/checkpoints/w2v2_ft/last.ckpt
 lm_pretrain_model: microsoft/deberta-base
 optimizer: Adam
