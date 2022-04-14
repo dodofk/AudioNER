@@ -66,11 +66,12 @@ class W2V2DebertaModule(LightningModule):
         self.val_wer_best = MinMetric()
 
     def forward(self, inputs):
+        labels = inputs["labels"]
+        del inputs["labels"]
         output = self.wav2vec2(inputs)
         output = self.lm_head(output.hidden_states[-1])
         logits = f.log_softmax(output, dim=-1).transpose(0, 1)
 
-        labels = inputs["labels"]
         labels_mask = labels >= 0
         target_lengths = labels_mask.sum(-1)
         flattened_targets = labels.masked_select(labels_mask)
@@ -135,7 +136,7 @@ class W2V2DebertaModule(LightningModule):
     def validation_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
 
-        print(pred, gt)
+        print("Pred: ", pred, "\nGT: ", gt)
 
         # log val metrics
         cer = self.val_cer(pred, gt)
