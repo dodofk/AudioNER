@@ -78,7 +78,7 @@ class W2V2DebertaModule(LightningModule):
         attention_mask = (
             inputs["attention_mask"] if "attention_mask" in inputs.keys() else torch.ones_like(inputs["input_values"])
         )
-        input_lengths = self.wav2vec2.model._get_fea_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
+        input_lengths = self.wav2vec2.model._get_feat_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
 
         with torch.backends.cudnn.flags(enabled=False):
             loss = f.ctc_loss(
