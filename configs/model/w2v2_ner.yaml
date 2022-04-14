@@ -1,0 +1,7 @@
+_target_:
+audio_ckpt_path: ./logs/experiments/runs/w2v2-asr-ft/2022-04-01_11-00-28/checkpoints/w2v2_ft/last.ckpt
+lm_pretrain_model: microsoft/deberta-base
+optimizer: Adam
+lr: 0.001
+weight_decay: 0.0005
+w2v2_output_size: 768

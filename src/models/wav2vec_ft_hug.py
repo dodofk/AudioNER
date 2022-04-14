@@ -71,6 +71,7 @@ class Wav2Vec2FTModule(LightningModule):
     def step(self, batch: Any):
         inputs = dict()
         inputs["input_values"] = batch["waveform"]
+        inputs["output_hidden_states"] = True
 
         with self.processor.as_target_processor():
             inputs["labels"] = self.processor(
@@ -80,6 +81,8 @@ class Wav2Vec2FTModule(LightningModule):
             ).input_ids
 
         output = self.forward(inputs)
+
+        print(output.hidden_states[-1].size(), output.logits.size())
 
         logits = output.logits
         loss = output.loss

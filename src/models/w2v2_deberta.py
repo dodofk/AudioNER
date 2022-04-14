@@ -1,12 +1,15 @@
 from typing import Any, List
 import os
 import torch
+
+import torch.nn as nn
+import torch.nn.functional as f
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from src.models.wav2vec_ft import Wav2Vec2FTModule
+from src.models.wav2vec_ft_hug import Wav2Vec2FTModule
 
-from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor, DebertaModel
+from transformers import Wav2Vec2CTCTokenizer
 
 from hydra.utils import get_original_cwd
 
@@ -19,13 +22,13 @@ class W2V2DebertaModule(LightningModule):
         optimizer: str = "Adam",
         lr: float = 0.001,
         weight_decay: float = 0.0005,
+        w2v2_output_size: int = 768,
     ):
         super().__init__()
         # todo: may change to pytorch flash:
-        # https://devblog.pytorchlightning.ai/fine-tuning-wav2vec-for-speech-recognition-with-lightning-flash-bf4b75cad99a
         self.save_hyperparameters(logger=False)
 
-        tokenizer = Wav2Vec2CTCTokenizer(
+        self.tokenizer = Wav2Vec2CTCTokenizer(
             os.path.join(
                 get_original_cwd(),
                 self.hparams.vocab_path,
@@ -35,20 +38,19 @@ class W2V2DebertaModule(LightningModule):
             word_delimiter_token="|",
             do_lower_case=True,
         )
-        feature_extractor = Wav2Vec2FeatureExtractor(
-            feature_size=1,
-            sampling_rate=16000,
-            padding_value=0.0,
-            do_normalize=True,
-            return_attention_mask=False,
-        )
-        self.processor = Wav2Vec2Processor(
-            feature_extractor=feature_extractor,
-            tokenizer=tokenizer,
-        )
 
-        self.wav2vec2 = Wav2Vec2FTModule.load_from_checkpoint(audio_ckpt_path)
-        self.deberta = DebertaModel.from_pretrained(lm_pretrain_model)
+        self.wav2vec2 = Wav2Vec2FTModule.load_from_checkpoint(
+            os.path.join(
+                get_original_cwd(),
+                audio_ckpt_path,
+            )
+        )
+        # self.deberta = DebertaModel.from_pretrained(lm_pretrain_model)
+
+        self.lm_head = nn.Linear(
+            self.hparams.w2v2_output_size,
+            self.tokenizer.vocab_size,
+        )
 
         self.train_cer = CharErrorRate()
         self.train_wer = WordErrorRate()
@@ -63,23 +65,48 @@ class W2V2DebertaModule(LightningModule):
         self.val_wer_best = MinMetric()
 
     def forward(self, inputs):
-        return self.model(**inputs)
+        x = self.wav2vec2(**inputs)
+        output = self.lm_head(x)
+        logits = f.log_softmax(output, dim=-1).transpose(0, 1)
+
+        labels = inputs["labels"]
+        labels_mask = labels >= 0
+        target_lengths = labels_mask.sum(-1)
+        flattened_targets = labels.masked_select(labels_mask)
+
+        attention_mask = (
+            inputs["attention_mask"] if "attention_mask" in inputs.keys() else torch.ones_like(inputs["input_values"])
+        )
+        input_lengths = self.wav2vec2.model._get_fea_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
+
+        with torch.backends.cudnn.flags(enabled=False):
+            loss = f.ctc_loss(
+                logits,
+                flattened_targets,
+                input_lengths,
+                target_lengths,
+            )
+
+        return {
+            "logits": logits,
+            "loss": loss,
+        }
 
     def step(self, batch: Any):
         inputs = dict()
         inputs["input_values"] = batch["waveform"]
+        inputs["output_hidden_states"] = False
 
-        with self.processor.as_target_processor():
-            inputs["labels"] = self.processor(
-                batch["text"],
-                return_tensors="pt",
-                padding=True,
-            ).input_ids
+        inputs["labels"] = self.tokenizer(
+            batch["e2e_text"],
+            return_tensors="pt",
+            padding=True,
+        ).input_ids
 
         output = self.forward(inputs)
 
-        logits = output.logits
-        loss = output.loss
+        logits = output["logits"]
+        loss = output["loss"]
 
         preds = torch.argmax(logits, dim=-1)
         pred = self.processor.batch_decode(preds)
@@ -106,6 +133,8 @@ class W2V2DebertaModule(LightningModule):
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
+
+        print(pred, gt)
 
         # log val metrics
         cer = self.val_cer(pred, gt)
