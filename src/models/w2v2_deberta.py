@@ -111,9 +111,10 @@ class W2V2DebertaModule(LightningModule):
         loss = output["loss"]
 
         preds = torch.argmax(logits, dim=-1)
+        print("Debug: ", preds)
         pred = self.tokenizer.batch_decode(preds)
 
-        return loss, pred, [text.lower() for text in batch["text"]]
+        return loss, pred, [text.lower() for text in batch["e2e_text"]]
 
     def training_step(self, batch: Any, batch_idx: int):
         loss, pred, gt = self.step(batch)
