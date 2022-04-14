@@ -66,8 +66,8 @@ class W2V2DebertaModule(LightningModule):
         self.val_wer_best = MinMetric()
 
     def forward(self, inputs):
-        x = self.wav2vec2(inputs)
-        output = self.lm_head(x)
+        output = self.wav2vec2(inputs)
+        output = self.lm_head(output.hidden_states[-1])
         logits = f.log_softmax(output, dim=-1).transpose(0, 1)
 
         labels = inputs["labels"]
@@ -96,7 +96,7 @@ class W2V2DebertaModule(LightningModule):
     def step(self, batch: Any):
         inputs = dict()
         inputs["input_values"] = batch["waveform"]
-        inputs["output_hidden_states"] = False
+        inputs["output_hidden_states"] = True
 
         inputs["labels"] = self.tokenizer(
             batch["e2e_text"],
