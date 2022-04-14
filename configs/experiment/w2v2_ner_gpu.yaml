@@ -5,7 +5,7 @@
 
 defaults:
   - override /datamodule: voxPopuli.yaml
-  - override /model: w2v2_ner_gpu.yaml
+  - override /model: w2v2_ner.yaml
   - override /callbacks: w2v2_ft.yaml
   - override /logger: wandb.yaml
   - override /trainer: w2v2_ft.yaml
