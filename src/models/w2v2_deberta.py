@@ -110,7 +110,7 @@ class W2V2DebertaModule(LightningModule):
         loss = output["loss"]
 
         preds = torch.argmax(logits, dim=-1)
-        pred = self.processor.batch_decode(preds)
+        pred = self.tokenizer.batch_decode(preds)
 
         return loss, pred, [text.lower() for text in batch["text"]]
 
