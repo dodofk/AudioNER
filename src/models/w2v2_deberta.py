@@ -70,7 +70,7 @@ class W2V2DebertaModule(LightningModule):
         del inputs["labels"]
         output = self.wav2vec2(inputs)
         output = self.lm_head(output.hidden_states[-1])
-        logits = f.log_softmax(output, dim=-1).transpose(0, 1)
+        logits = f.log_softmax(output, dim=-1)
 
         labels_mask = labels >= 0
         target_lengths = labels_mask.sum(-1)
@@ -83,7 +83,7 @@ class W2V2DebertaModule(LightningModule):
 
         with torch.backends.cudnn.flags(enabled=False):
             loss = f.ctc_loss(
-                logits,
+                logits.transpose(0, 1),
                 flattened_targets,
                 input_lengths,
                 target_lengths,
@@ -111,7 +111,6 @@ class W2V2DebertaModule(LightningModule):
         loss = output["loss"]
 
         preds = torch.argmax(logits, dim=-1)
-        print("Debug: ", preds)
         pred = self.tokenizer.batch_decode(preds)
 
         return loss, pred, [text.lower() for text in batch["e2e_text"]]
