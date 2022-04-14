@@ -1,20 +1,21 @@
 from typing import Any, List
-
 import os
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from transformers import Wav2Vec2Model, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
+from src.models.wav2vec_ft import Wav2Vec2FTModule
+
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor, DebertaModel
 
 from hydra.utils import get_original_cwd
 
 
-class Wav2Vec2FTModule(LightningModule):
+class W2V2DebertaModule(LightningModule):
     def __init__(
         self,
-        pretrain_name: str = "facebook/hubert-larget-ls960-ft",
-        vocab_path: str = "./data/voxpopuli_vocab.json",
+        audio_ckpt_path: str = "facebook/hubert-larget-ls960-ft",
+        lm_pretrain_model: str = "microsoft/deberta-base",
         optimizer: str = "Adam",
         lr: float = 0.001,
         weight_decay: float = 0.0005,
@@ -45,13 +46,9 @@ class Wav2Vec2FTModule(LightningModule):
             feature_extractor=feature_extractor,
             tokenizer=tokenizer,
         )
-        self.model = Wav2Vec2Model.from_pretrained(
-            self.hparams.pretrain_name,
-            ctc_loss_reduction="mean",
-            pad_token_id=self.processor.tokenizer.pad_token_id,
-        )
-        self.model.config.ctc_zero_infinity = True
-        self.model.freeze_feature_extractor()
+
+        self.wav2vec2 = Wav2Vec2FTModule.load_from_checkpoint(audio_ckpt_path)
+        self.deberta = DebertaModel.from_pretrained(lm_pretrain_model)
 
         self.train_cer = CharErrorRate()
         self.train_wer = WordErrorRate()

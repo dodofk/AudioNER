@@ -5,7 +5,7 @@ import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from transformers import Wav2Vec2Model, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
 
 from hydra.utils import get_original_cwd
 
@@ -45,7 +45,7 @@ class Wav2Vec2FTModule(LightningModule):
             feature_extractor=feature_extractor,
             tokenizer=tokenizer,
         )
-        self.model = Wav2Vec2Model.from_pretrained(
+        self.model = Wav2Vec2ForCTC.from_pretrained(
             self.hparams.pretrain_name,
             ctc_loss_reduction="mean",
             pad_token_id=self.processor.tokenizer.pad_token_id,

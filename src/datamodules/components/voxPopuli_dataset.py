@@ -1,6 +1,7 @@
 from typing import List, Dict
 import os
 import json
+import re
 
 import pandas as pd
 
@@ -17,10 +18,12 @@ from hydra.utils import get_original_cwd
 from src.utils.text_preprocess import remove_special_characters, extract_all_chars
 
 
+# todo: set up matrix for subword tokens
 class VoxPopuliDataset(Dataset):
     def __init__(
         self,
         manifest_dir: str = "../slue-toolkit/manifest/slue-voxpopuli/nlp_ner",
+        e2e_manifest_dir: str = "../slue-toolkit/manifest/slue-voxpopuli/e2e_ner",
         vocab_path: str = "./data/voxpopuli_vocab.json",
         split: str = "fine-tune",
         data_dir: str = "../slue-toolkit/data/slue-voxpopuli/",
@@ -52,6 +55,10 @@ class VoxPopuliDataset(Dataset):
             sep="\t",
         )
 
+        with open(os.path.join(get_original_cwd(), e2e_manifest_dir,f"{split}.combined.ltr")) as f:
+            e2e_ltr = f.read()
+            self.e2e_ltr_list = e2e_ltr.split("\n")
+
         self.df["normalized_text"] = self.df["normalized_text"].apply(lambda s: remove_special_characters(s))
 
         if not os.path.exists(os.path.join(get_original_cwd(), vocab_path)):
@@ -71,6 +78,7 @@ class VoxPopuliDataset(Dataset):
     def __getitem__(self, index) -> Dict:
         waveform = self.load_audio(index)
         normalized_text = self.df.iloc[index]["normalized_text"]
+        e2e_ner_text = self.e2e_ltr_list[index].replace(" ", "")
         item = self.dataset.__getitem__(index)
         input_ids = item["input_ids"]
         token_type_ids = item["token_type_ids"]
@@ -80,6 +88,7 @@ class VoxPopuliDataset(Dataset):
         return {
             "waveform": waveform,
             "text": normalized_text,
+            "e2e_text": e2e_ner_text,
             "input_ids": input_ids,
             "token_type_ids": token_type_ids,
             "attention_mask": attention_mask,
@@ -110,6 +119,7 @@ def voxpopuli_collate_fn(
 
     waveforms = [data["waveform"] for data in inputs]
     normalized_text = [remove_special_characters(data["text"]) for data in inputs]
+    e2e_text = [data["e2e_text"] for data in inputs]
     input_ids = torch.stack([data["input_ids"] for data in inputs])
     token_type_ids = torch.stack([data["token_type_ids"] for data in inputs])
     attention_mask = torch.stack([data["attention_mask"] for data in inputs])
@@ -118,6 +128,7 @@ def voxpopuli_collate_fn(
     return {
         "waveform": padded_waveforms,
         "text": normalized_text,
+        "e2e_text": e2e_text,
         "input_ids": input_ids,
         "token_type_ids": token_type_ids,
         "attention_mask": attention_mask,
@@ -130,6 +141,7 @@ def build_voxpopuli_dataloader(
     num_workers: int,
     pin_memory: bool,
     manifest_dir: str,
+    e2e_manifest_dir: str,
     vocab_path: str,
     split: str,
     data_dir: str,
@@ -140,6 +152,7 @@ def build_voxpopuli_dataloader(
 
     vp_dataset = VoxPopuliDataset(
         manifest_dir=manifest_dir,
+        e2e_manifest_dir=e2e_manifest_dir,
         vocab_path=vocab_path,
         split=split,
         data_dir=data_dir,
@@ -158,15 +171,16 @@ def build_voxpopuli_dataloader(
 
 
 @hydra.main(config_path=None)
-def test_dataset(cfg) -> None:
+def dataset_debug(cfg) -> None:
     dataset = VoxPopuliDataset(
         data_dir="../../../../slue-toolkit/data/slue-voxpopuli/",
         manifest_dir="../../../../slue-toolkit/manifest/slue-voxpopuli/nlp_ner",
+        e2e_manifest_dir="../../../../slue-toolkit/manifest/slue-voxpopuli/e2e_ner",
+        vocab_path="../../../data/voxpopuli_vocab.json",
         split="fine-tune",
     )
     print(dataset.__getitem__(1))
-    print(dataset.vocab)
 
 
 if __name__ == "__main__":
-    test_dataset()
+    dataset_debug()
