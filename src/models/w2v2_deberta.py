@@ -66,7 +66,7 @@ class W2V2DebertaModule(LightningModule):
         self.val_wer_best = MinMetric()
 
     def forward(self, inputs):
-        x = self.wav2vec2(**inputs)
+        x = self.wav2vec2(inputs)
         output = self.lm_head(x)
         logits = f.log_softmax(output, dim=-1).transpose(0, 1)
 
