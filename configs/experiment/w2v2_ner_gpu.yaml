@@ -30,7 +30,7 @@ trainer:
   accumulate_grad_batches: 8
 
 model:
-  lr: 0.00001
+  lr: 0.001
 
 
 datamodule:
