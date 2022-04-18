@@ -88,6 +88,7 @@ class W2V2DebertaModule(LightningModule):
                 flattened_targets,
                 input_lengths,
                 target_lengths,
+                zero_infinity=True,
             )
 
         return {
