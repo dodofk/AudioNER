@@ -68,7 +68,7 @@ class W2V2DebertaModule(LightningModule):
     def forward(self, inputs):
         labels = inputs["labels"]
         del inputs["labels"]
-        outputs = self.wav2vec2.model.wav2vec2(inputs)
+        outputs = self.wav2vec2.model.wav2vec2(**inputs)
         hidden_states = outputs[0]
         output = self.lm_head(hidden_states)
         logits = f.log_softmax(output, dim=-1)
