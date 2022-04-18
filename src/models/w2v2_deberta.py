@@ -73,7 +73,7 @@ class W2V2DebertaModule(LightningModule):
         output = self.lm_head(hidden_states)
         logits = f.log_softmax(output, dim=-1)
 
-        labels_mask = labels >= 0
+        labels_mask = labels >= 1
         target_lengths = labels_mask.sum(-1)
         flattened_targets = labels.masked_select(labels_mask)
 
