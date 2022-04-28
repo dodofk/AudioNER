@@ -1,0 +1,6 @@
+_target_: src.models.w2v2_ner_ft.W2V2NERModule
+audio_ckpt: facebook/wav2vec2-base
+vocab_path: ./data/e2e_voxpopuli_vocab.json
+optimizer: AdamW
+lr: 0.001
+weight_decay: 0.0005

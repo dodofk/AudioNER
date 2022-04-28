@@ -7,23 +7,18 @@ import torch.nn.functional as f
 from pytorch_lightning import LightningModule
 from torchmetrics import MinMetric, WordErrorRate, CharErrorRate
 
-from src.models.wav2vec_ft_hug import Wav2Vec2FTModule
-
-from transformers import Wav2Vec2CTCTokenizer
-
+from transformers import Wav2Vec2ForCTC, Wav2Vec2CTCTokenizer
 from hydra.utils import get_original_cwd
 
 
-class W2V2DebertaModule(LightningModule):
+class W2V2NERModule(LightningModule):
     def __init__(
         self,
-        audio_ckpt_path: str = "facebook/hubert-larget-ls960-ft",
+        audio_ckpt: str = "facebook/wav2vec2-large",
         vocab_path: str = "./data/e2e_voxpopuli_vocab.json",
-        lm_pretrain_model: str = "microsoft/deberta-base",
         optimizer: str = "Adam",
         lr: float = 0.001,
         weight_decay: float = 0.0005,
-        w2v2_output_size: int = 768,
     ):
         super().__init__()
         # todo: may change to pytorch flash:
@@ -40,17 +35,12 @@ class W2V2DebertaModule(LightningModule):
             do_lower_case=True,
         )
 
-        self.wav2vec2 = Wav2Vec2FTModule.load_from_checkpoint(
-            os.path.join(
-                get_original_cwd(),
-                audio_ckpt_path,
-            )
-        )
-        # self.deberta = DebertaModel.from_pretrained(lm_pretrain_model)
-
-        self.lm_head = nn.Linear(
-            self.hparams.w2v2_output_size,
-            self.tokenizer.vocab_size,
+        self.model = Wav2Vec2ForCTC.from_pretrained(
+            self.hparams.audio_ckpt,
+            ctc_loss_reduction="mean",
+            ctc_zero_infinity=True,
+            pad_token_id=self.tokenizer.pad_token_id,
+            vocab_size=self.tokenizer.vocab_size,
         )
 
         self.train_cer = CharErrorRate()
@@ -66,35 +56,7 @@ class W2V2DebertaModule(LightningModule):
         self.val_wer_best = MinMetric()
 
     def forward(self, inputs):
-        labels = inputs["labels"]
-        del inputs["labels"]
-        outputs = self.wav2vec2.model.wav2vec2(**inputs)
-        hidden_states = outputs[0]
-        output = self.lm_head(hidden_states)
-        logits = f.log_softmax(output, dim=-1)
-
-        labels_mask = labels >= 1
-        target_lengths = labels_mask.sum(-1)
-        flattened_targets = labels.masked_select(labels_mask)
-
-        attention_mask = (
-            inputs["attention_mask"] if "attention_mask" in inputs.keys() else torch.ones_like(inputs["input_values"])
-        )
-        input_lengths = self.wav2vec2.model._get_feat_extract_output_lengths(attention_mask.sum(-1)).to(torch.long)
-
-        with torch.backends.cudnn.flags(enabled=False):
-            loss = f.ctc_loss(
-                logits.transpose(0, 1),
-                flattened_targets,
-                input_lengths,
-                target_lengths,
-                zero_infinity=True,
-            )
-
-        return {
-            "logits": logits,
-            "loss": loss,
-        }
+        return self.model(**inputs)
 
     def step(self, batch: Any):
         inputs = dict()
